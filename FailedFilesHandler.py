@@ -4,7 +4,7 @@ from ParsingShinken import ParsingShinken
 
 class FailedFilesHandler:
     path_log = "/var/log/shinken/jira/failedFilesHandler.log"
-
+    failed_path_alerts = '/tmp/alerts/f'
     logger = logging.getLogger('FailedFilesHandler')
     logger.setLevel(logging.DEBUG)
     handler = logging.handlers.RotatingFileHandler(filename=path_log, mode='a', maxBytes=2000000, backupCount=10)
@@ -19,12 +19,24 @@ class FailedFilesHandler:
         self.path_alerts=path_alerts
         return
 
-    def main(self, file_alert, error_conf):
-        self.logger.warning('File has failed while parsing: ' + file_alert+ 'with error message '+error_conf)
-        self.logger.warning('Attempting reparse of failed file.')
+    def retryFailedFile(self, file_alert, error_conf, step):
+        self.logger.warning('*****File' + file_alert+ 'has failed on its: '+step + ' step with error message '+ error_conf+'*****')
+        self.logger.warning('Attempting retry of failed file.')
         parsing = ParsingShinken()
 
-        for i in (0,2):
+        parsed=false
+        for i in (0,2) and parsed==false:
             myparsingdata, error = parsing.parsingfiles(self.path_alerts, file_alert)
             if error:
-                self.logger.warning('Attempt '+(i+1))
+                self.logger.warning('Attempt '+(i+1) +'of '+step +' step for file ' + str(file_alert[1])  +'has failed')
+                self.logger.warning('Error message:'+ error)
+
+                if i==2 and error:
+                    self.logger.warning('Moving file to  ' + failed_path_alerts + 'has file cannot be parsed.')
+                    os.rename(path_alerts + '/' + str(file_alert[1]), failed_path_alerts + '/' + str(file_alert[1]))
+            else:
+                parsed=true
+
+
+
+
